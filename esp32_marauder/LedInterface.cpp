@@ -6,19 +6,17 @@ LedInterface::LedInterface() {
 
 void LedInterface::RunSetup() {
   #ifdef HAS_NEOPIXEL_LED
-    // ESP32-C5 workaround: Use bitbanging instead of RMT
     #if CONFIG_IDF_TARGET_ESP32C5
-      strip.setPin(NEOPIXEL_PIN);
-      strip.updateLength(1);
-      strip.updateType(NEO_GRB);
-      strip.begin(false); // false = use bitbanging instead of RMT
+      // Custom setup for ESP32-C5
+      pinMode(27, OUTPUT);
+      digitalWrite(27, LOW);
     #else
+      // Standard setup for other boards
       strip.begin();
+      strip.setBrightness(50);
+      strip.setPixelColor(0, strip.Color(0, 0, 0));
+      strip.show();
     #endif
-    
-    strip.setBrightness(50);
-    strip.setPixelColor(0, strip.Color(0, 0, 0));
-    strip.show();
   #endif
 
   this->initTime = millis();
@@ -26,8 +24,39 @@ void LedInterface::RunSetup() {
 
 void LedInterface::setColor(int r, int g, int b) {
   #ifdef HAS_NEOPIXEL_LED
-    strip.setPixelColor(0, strip.Color(r, g, b));
-    strip.show();
+    #if CONFIG_IDF_TARGET_ESP32C5
+      // Custom bitbanging for WS2812B on ESP32-C5
+      const int pin = 27;
+      uint8_t bytes[3] = {g, r, b};  // GRB order for WS2812B
+      
+      // Critical section for precise timing
+      portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+      portENTER_CRITICAL(&mux);
+      
+      for (int i = 0; i < 3; i++) {
+        for (int mask = 0x80; mask; mask >>= 1) {
+          if (bytes[i] & mask) {
+            // '1' bit: HIGH for 0.8µs, LOW for 0.45µs
+            digitalWrite(pin, HIGH);
+            delayMicroseconds(0.8);
+            digitalWrite(pin, LOW);
+            delayMicroseconds(0.45);
+          } else {
+            // '0' bit: HIGH for 0.4µs, LOW for 0.85µs
+            digitalWrite(pin, HIGH);
+            delayMicroseconds(0.4);
+            digitalWrite(pin, LOW);
+            delayMicroseconds(0.85);
+          }
+        }
+      }
+      
+      portEXIT_CRITICAL(&mux);
+    #else
+      // Standard NeoPixel for other boards
+      strip.setPixelColor(0, strip.Color(r, g, b));
+      strip.show();
+    #endif
   #endif
 }
 
