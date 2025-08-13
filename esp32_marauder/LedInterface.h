@@ -6,7 +6,11 @@
 #include "configs.h"
 #include "settings.h"
 #include <Arduino.h>
-#ifdef HAS_NEOPIXEL_LED
+
+// Determine LED driver based on platform
+#ifdef HAS_RMT_LED
+  #include "led_strip.h"
+#elif defined(HAS_NEOPIXEL_LED)
   #include <Adafruit_NeoPixel.h>
 #endif
 
@@ -17,6 +21,9 @@
 #define MODE_ATTACK 2
 #define MODE_SNIFF 3
 #define MODE_CUSTOM 4
+#define MODE_PROBE_DETECT 5
+#define MODE_DEAUTH_ACTIVE 6
+#define MODE_BEACON_ACTIVE 7
 
 extern Settings settings_obj;
 
@@ -25,34 +32,34 @@ extern Settings settings_obj;
 #endif
 
 class LedInterface {
-
   private:
     uint32_t initTime = 0;
-
     int current_fade_itter = 1;
     int wheel_pos = 255;
-    int wheel_speed = 1; // lower = slower
-
-    uint32_t Wheel(byte WheelPos);
-
+    int wheel_speed = 1;
     uint8_t current_mode = MODE_OFF;
 
+    #ifdef HAS_RMT_LED
+      led_strip_handle_t led_strip;
+    #endif
+
+    uint32_t Wheel(byte WheelPos);
     void rainbow();
     void ledOff();
     void attackLed();
     void sniffLed();
+    void probeDetectLed();
+    void deauthLed();
+    void beaconLed();
   
   public:
     LedInterface();
 
     void RunSetup();
     void main(uint32_t currentTime);
-
     void setMode(uint8_t);
     void setColor(int r, int g, int b);
     uint8_t getMode();
-    
-  
 };
 
 #endif
