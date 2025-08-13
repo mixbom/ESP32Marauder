@@ -1,15 +1,19 @@
 #include "LedInterface.h"
+#include "driver/gpio.h"
 
 LedInterface::LedInterface() {
-  // Constructor remains empty
+  #if CONFIG_IDF_TARGET_ESP32C5
+    use_bitbang = true;
+  #endif
 }
 
 void LedInterface::RunSetup() {
   #ifdef HAS_NEOPIXEL_LED
     #if CONFIG_IDF_TARGET_ESP32C5
-      // Custom setup for ESP32-C5
-      pinMode(27, OUTPUT);
-      digitalWrite(27, LOW);
+      // ESP32-C5 specific setup
+      gpio_reset_pin((gpio_num_t)NEOPIXEL_PIN);
+      gpio_set_direction((gpio_num_t)NEOPIXEL_PIN, GPIO_MODE_OUTPUT);
+      gpio_set_level((gpio_num_t)NEOPIXEL_PIN, 0);
     #else
       // Standard setup for other boards
       strip.begin();
@@ -22,42 +26,51 @@ void LedInterface::RunSetup() {
   this->initTime = millis();
 }
 
-void LedInterface::setColor(int r, int g, int b) {
+void LedInterface::setPixelColor(uint8_t r, uint8_t g, uint8_t b) {
   #ifdef HAS_NEOPIXEL_LED
     #if CONFIG_IDF_TARGET_ESP32C5
       // Custom bitbanging for WS2812B on ESP32-C5
-      const int pin = 27;
+      const int pin = NEOPIXEL_PIN;
       uint8_t bytes[3] = {g, r, b};  // GRB order for WS2812B
       
       // Critical section for precise timing
       portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
-      portENTER_CRITICAL(&mux);
+      portENTER_CRITICAL_SAFE(&mux);
       
       for (int i = 0; i < 3; i++) {
         for (int mask = 0x80; mask; mask >>= 1) {
           if (bytes[i] & mask) {
-            // '1' bit: HIGH for 0.8µs, LOW for 0.45µs
-            digitalWrite(pin, HIGH);
-            delayMicroseconds(0.8);
-            digitalWrite(pin, LOW);
-            delayMicroseconds(0.45);
+            // '1' bit: HIGH for 0.7µs, LOW for 0.6µs
+            gpio_set_level((gpio_num_t)pin, 1);
+            ets_delay_us(0.7);
+            gpio_set_level((gpio_num_t)pin, 0);
+            ets_delay_us(0.6);
           } else {
-            // '0' bit: HIGH for 0.4µs, LOW for 0.85µs
-            digitalWrite(pin, HIGH);
-            delayMicroseconds(0.4);
-            digitalWrite(pin, LOW);
-            delayMicroseconds(0.85);
+            // '0' bit: HIGH for 0.35µs, LOW for 0.8µs
+            gpio_set_level((gpio_num_t)pin, 1);
+            ets_delay_us(0.35);
+            gpio_set_level((gpio_num_t)pin, 0);
+            ets_delay_us(0.8);
           }
         }
       }
       
-      portEXIT_CRITICAL(&mux);
+      portEXIT_CRITICAL_SAFE(&mux);
     #else
       // Standard NeoPixel for other boards
       strip.setPixelColor(0, strip.Color(r, g, b));
       strip.show();
     #endif
   #endif
+}
+
+void LedInterface::setColor(int r, int g, int b) {
+  // Clamp values to 0-255
+  r = (r < 0) ? 0 : (r > 255) ? 255 : r;
+  g = (g < 0) ? 0 : (g > 255) ? 255 : g;
+  b = (b < 0) ? 0 : (b > 255) ? 255 : b;
+  
+  this->setPixelColor((uint8_t)r, (uint8_t)g, (uint8_t)b);
 }
 
 void LedInterface::setMode(uint8_t new_mode) {
