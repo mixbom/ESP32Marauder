@@ -7,10 +7,7 @@
 #include "settings.h"
 #include <Arduino.h>
 
-// Determine LED driver based on platform
-#ifdef HAS_RMT_LED
-  #include "led_strip.h"
-#elif defined(HAS_NEOPIXEL_LED)
+#ifdef HAS_NEOPIXEL_LED
   #include <Adafruit_NeoPixel.h>
 #endif
 
@@ -38,10 +35,6 @@ class LedInterface {
     int wheel_pos = 255;
     int wheel_speed = 1;
     uint8_t current_mode = MODE_OFF;
-
-    #ifdef HAS_RMT_LED
-      led_strip_handle_t led_strip;
-    #endif
 
     uint32_t Wheel(byte WheelPos);
     void rainbow();
