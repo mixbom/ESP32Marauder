@@ -36,6 +36,12 @@ class LedInterface {
     int wheel_speed = 1;
     uint8_t current_mode = MODE_OFF;
 
+    #if CONFIG_IDF_TARGET_ESP32C5
+      bool use_bitbang = true;
+    #else
+      bool use_bitbang = false;
+    #endif
+
     uint32_t Wheel(byte WheelPos);
     void rainbow();
     void ledOff();
@@ -44,6 +50,7 @@ class LedInterface {
     void probeDetectLed();
     void deauthLed();
     void beaconLed();
+    void setPixelColor(uint8_t r, uint8_t g, uint8_t b);
   
   public:
     LedInterface();
