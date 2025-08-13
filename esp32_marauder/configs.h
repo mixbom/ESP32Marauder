@@ -382,9 +382,12 @@
     //#define HAS_BATTERY
     //#define HAS_BT
     //#define HAS_BUTTONS
-    #define HAS_NEOPIXEL_LED
+    //define HAS_NEOPIXEL_LED
     //#define HAS_PWR_MGMT
     //#define HAS_SCREEN
+    #define HAS_RMT_LED
+    #define RMT_LED_GPIO 27
+    #define RMT_LED_COUNT 1
     #define HAS_GPS
     #define HAS_C5_SD
     #define HAS_SD
